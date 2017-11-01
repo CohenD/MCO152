@@ -9,6 +9,69 @@ import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.TimerTask;
 
+class EmailMessage {
+    String from, to, subject, message,  dateTimeRecieved;
+}
+
+interface IReadMail
+{
+    EmailMessage[] readMail();
+}
+
+class ReadMail implements IReadMail{
+
+    final String userName = "emailTester6000@gmail.com";
+    final String password = "Test6000";
+
+    Properties props = new Properties();
+
+    EmailMessage[] em;
+
+    Session session = Session.getInstance(props);
+
+    public ReadMail(){
+        props.put("mail.pop3.host", "pop.gmail.com");
+        props.put("mail.pop3.port", "995");
+        props.put("mail.pop3.starttls.enable", "true");
+        props.put("mail.store.protocol", "pop3");
+    }
+
+
+    @Override
+    public EmailMessage[] readMail() {
+
+        try {
+            Store mailStore = session.getStore("pop3s");
+            mailStore.connect("pop.gmail.com", userName, password);
+
+            Folder folder = mailStore.getFolder("INBOX");
+            folder.open(Folder.READ_ONLY);
+
+            Message[] emailMessages = folder.getMessages();
+
+            em = new EmailMessage[emailMessages.length];
+
+            //Iterate the messages
+            for (int i = 0; i < emailMessages.length; i++) {
+
+                em[i].from = emailMessages[i].getFrom()[0].toString();
+                em[i].to = userName;
+                em[i].subject = emailMessages[i].getSubject().toString();
+                em[i].message = emailMessages[i].getContent().toString();
+                em[i].dateTimeRecieved = emailMessages[i].getReceivedDate().toString();
+            }
+            folder.close(false);
+            mailStore.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error in receiving email.");
+        }
+
+        return em;
+    }
+}
+
 interface IClock
 {
     LocalDateTime now();
@@ -149,9 +212,13 @@ public class Main {
 
     public static void main(String[] args) throws ParseException {
 
-        ClockMailer cm = new ClockMailer(new Clock(), new Mailer());
+//        ClockMailer cm = new ClockMailer(new Clock(), new Mailer());
+//
+//        cm.start();
 
-        cm.start();
+        ReadMail r = new ReadMail();
+
+        r.readMail();
 
     }
 }
