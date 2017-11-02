@@ -1,16 +1,27 @@
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+import java.io.IOException;
 import java.text.ParseException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.Properties;
 import java.util.TimerTask;
 
 class EmailMessage {
-    String from, to, subject, message,  dateTimeRecieved;
+    String from, to, subject, message;
+    Date dateTimeRecieved;
+
+    public void outputEmail(){
+        System.out.println("From:\t\t" + from +
+                "\nTo:\t\t\t" + to +
+                "\nTime:\t\t" + dateTimeRecieved +
+                "\nSubject:\t" + subject +
+                "\nMesssage:\t" + message + "\n");
+    }
 }
 
 interface IReadMail
@@ -25,7 +36,7 @@ class ReadMail implements IReadMail{
 
     Properties props = new Properties();
 
-    EmailMessage[] em;
+    EmailMessage[] emailMessages;
 
     Session session = Session.getInstance(props);
 
@@ -41,34 +52,55 @@ class ReadMail implements IReadMail{
     public EmailMessage[] readMail() {
 
         try {
-            Store mailStore = session.getStore("pop3s");
-            mailStore.connect("pop.gmail.com", userName, password);
+            Store mailStore = session.getStore("imaps");
+            mailStore.connect("imap.gmail.com", userName, password);
 
             Folder folder = mailStore.getFolder("INBOX");
             folder.open(Folder.READ_ONLY);
 
-            Message[] emailMessages = folder.getMessages();
+            Message[] fethchedMail = folder.getMessages();
 
-            em = new EmailMessage[emailMessages.length];
+            emailMessages = new EmailMessage[fethchedMail.length];
 
             //Iterate the messages
-            for (int i = 0; i < emailMessages.length; i++) {
+            for (int i = 0; i < fethchedMail.length; i++) {
+                emailMessages[i] = new EmailMessage();
 
-                em[i].from = emailMessages[i].getFrom()[0].toString();
-                em[i].to = userName;
-                em[i].subject = emailMessages[i].getSubject().toString();
-                em[i].message = emailMessages[i].getContent().toString();
-                em[i].dateTimeRecieved = emailMessages[i].getReceivedDate().toString();
+                emailMessages[i].from = fethchedMail[i].getFrom()[0].toString();
+                emailMessages[i].to = userName;
+                emailMessages[i].subject = fethchedMail[i].getSubject().toString();
+                emailMessages[i].message = fethchedMail[i].getContent().toString();
+                emailMessages[i].dateTimeRecieved = fethchedMail[i].getReceivedDate();
+
+                if (fethchedMail[i].getContent() instanceof MimeMultipart) {
+                    emailMessages[i].message = mimeToPlain((MimeMultipart) fethchedMail[i].getContent());
+                }else{
+                    emailMessages[i].message = htmlToPlain(fethchedMail[i].getContent().toString());
+                }
+
+                emailMessages[i].outputEmail();
             }
             folder.close(false);
             mailStore.close();
 
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Error in receiving email.");
+            System.err.println("Error fetching emails.");
         }
 
-        return em;
+        return emailMessages;
+    }
+
+    private static String mimeToPlain(MimeMultipart m) throws IOException, MessagingException {
+        String message = "";
+        for (int i = 0; i < m.getCount(); i++) {
+            message += htmlToPlain(m.getBodyPart(i).getContent().toString()) + "\n";
+        }
+        return message;
+    }
+
+    private static String htmlToPlain(String html) {
+        return org.jsoup.Jsoup.parse(html).text();
     }
 }
 
