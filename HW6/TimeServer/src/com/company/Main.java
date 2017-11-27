@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.InetAddress;
 import java.util.Date;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 
 class ReadProperties {
@@ -82,8 +83,9 @@ class TimeServerClock implements IClock{
             catch (IOException e) {
                 if (hosts[hosts.length - 1].equals(host)){
                     e.printStackTrace();
-                    throw new RuntimeException();
+                    throw new RuntimeException("No hosts found");
                 }else{
+                    System.out.println("Server unsuccessful. Attempting next server");
                     continue;
                 }
             }
